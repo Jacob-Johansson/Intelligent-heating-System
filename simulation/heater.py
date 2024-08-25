@@ -1,7 +1,7 @@
 
 # Returns the heat from the heater, measured in watts (W = dQ_gain/dt).
-def Update(heatingPower, thermostatState):
-    return heatingPower * thermostatState
+def update(heatingpower, thermostatstate):
+    return heatingpower * thermostatstate
 
-def CalculateCost(heaterPower, heaterState, costPerJoule, dt):
-    return heaterPower * heaterState * costPerJoule * dt
+def calculate_cost(heatingpower, heaterstate, costperjoule, dt):
+    return heatingpower * heaterstate * costperjoule * dt

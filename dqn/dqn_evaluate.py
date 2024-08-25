@@ -11,14 +11,14 @@ import numpy as np
 import importer
 
 # Segment the data temps, in hours, into 6-minute inverval.
-def SegmentHourTempsInto6MinuteTemps(temps):
+def segment_hour_temps_into_6minute_temps(temps):
     # Segment the data temps, in hours, into 6-minute inverval.
-    tempsMinutes = np.zeros(len(temps) * 10)
+    tempsminutes = np.zeros(len(temps) * 10)
     for i in range(0, len(temps) - 1):
         for j in range(0, 10):
             # Lerp the temperature
-            tempsMinutes[i * 10 + j] = temps[i] + (temps[i + 1] - temps[i]) * j / 10
-    return tempsMinutes
+            tempsminutes[i * 10 + j] = temps[i] + (temps[i + 1] - temps[i]) * j / 10
+    return tempsminutes
 
 # Define the parameters.
 r_wall = 5
@@ -53,26 +53,24 @@ params = {
 }
 
 # Setup the environment
-outdoorTemps = SegmentHourTempsInto6MinuteTemps(importer.ImportHuskvarna2022())
-targetTemps = np.ones(len(outdoorTemps))*21
-
-env = dqn_environment.DQNEnvironment(params, outdoorTemps, "cpu")
-
-targetTempsDayCycle = np.zeros(len(targetTemps))
-for i in range(len(targetTemps)):
+outdoor_temperatures = segment_hour_temps_into_6minute_temps(importer.import_huskvarna2022())
+target_temperatures = np.zeros(len(outdoor_temperatures))
+for i in range(len(target_temperatures)):
     time = i % (24*10)
     if time < 6 or time > 22:
-        targetTempsDayCycle[i] = 21
+        target_temperatures[i] = 21
     else:
-        targetTempsDayCycle[i] = 18
+        target_temperatures[i] = 18
         
-houseTemps = np.zeros(len(outdoorTemps))
-heaterStates = np.zeros(len(outdoorTemps))
-costResult = np.zeros(len(outdoorTemps))
-houseTemp = 20 # Initialize the house temperature.
-prevHouseTemp = houseTemp
-prevHeatGain = 0
-tempHysteresis = params["Hysteresis"]
+env = dqn_environment.DQNEnvironment(params, outdoor_temperatures, "cpu")
+        
+indoor_temperatures = np.zeros(len(outdoor_temperatures))
+heater_states = np.zeros(len(outdoor_temperatures))
+costs = np.zeros(len(outdoor_temperatures))
+indoortemperature = 20 # Initialize the house temperature.
+previousindoortemperature = indoortemperature
+previousheatgain = 0
+hysteresis = params["Hysteresis"]
 
 # Load model and weights.
 num_actions = params["NumActions"]
@@ -81,10 +79,10 @@ model = dqn.DQN(num_observations, num_actions)
 model.load_state_dict(torch.load('dqn/models/dqn_model_b.pth'))
 model.eval()
 
-totalCost = 0
-for i in range(0, len(outdoorTemps)):
-    outsideTemp = outdoorTemps[i]
-    targetTemp = targetTempsDayCycle[i]
+totalcost = 0
+for i in range(0, len(outdoor_temperatures)):
+    outdoortemperature = outdoor_temperatures[i]
+    targettemperature = target_temperatures[i]
     
     # Get the parameters.
     air_mass = params["AirMass"]
@@ -95,29 +93,27 @@ for i in range(0, len(outdoorTemps)):
     cost_per_joule = params["CostPerJoule"]
     dt = params["Dt"]
     
-    # Samples are taken every 6 minute.
-    for j in range(0, 1):
-        index = i
-        houseTemps[index] = houseTemp
-        
-        tempDifferenceA = targetTemp - houseTemp
-        tempDifferenceB = houseTemp - prevHouseTemp
-        nextOutsideTempHour = outdoorTemps[i + 1] if i + 1 < len(outdoorTemps) else outdoorTemps[len(outdoorTemps) - 1]
-        
-        result = model.forward(torch.tensor([tempDifferenceA, tempDifferenceB, nextOutsideTempHour - outsideTemp], dtype=torch.float32))
-        action = torch.argmax(result).item()
-        heaterState = action / (num_actions - 1)
-        
-        simulationResult = simulation.Step(outsideTemp, houseTemp, air_mass, air_heat_capacity, thermal_resistance, maximum_heating_power, heaterState, cost_per_joule, dt)
-        
-        cost = simulation.heater.CalculateCost(maximum_heating_power, heaterState, cost_per_joule, dt)
-        totalCost += cost
-        
-        prevHouseTemp = houseTemp
-        prevHeatGain = simulationResult[1]
-        houseTemp = simulationResult[0]
-        heaterStates[index] = heaterState
-        costResult[index] = totalCost
+    # Step the simulation.
+    indoor_temperatures[i] = indoortemperature
+    
+    targettemperaturedifference = targettemperature - indoortemperature
+    indoortemperaturedifference = indoortemperature - previousindoortemperature
+    outdoortemperaturedifference = outdoor_temperatures[i + 1] if i + 1 < len(outdoor_temperatures) else outdoor_temperatures[len(outdoor_temperatures) - 1]
+    
+    result = model.forward(torch.tensor([targettemperaturedifference, indoortemperaturedifference, outdoortemperaturedifference - outdoortemperature], dtype=torch.float32))
+    action = torch.argmax(result).item()
+    heaterstate = action / (num_actions - 1)
+    
+    simulationresult = simulation.step(outdoortemperature, indoortemperature, air_mass, air_heat_capacity, thermal_resistance, maximum_heating_power, heaterstate, cost_per_joule, dt)
+    
+    cost = simulation.heater.calculate_cost(maximum_heating_power, heaterstate, cost_per_joule, dt)
+    totalcost += cost
+    
+    previousindoortemperature = indoortemperature
+    previousheatgain = simulationresult[1]
+    indoortemperature = simulationresult[0]
+    heater_states[i] = heaterstate
+    costs[i] = totalcost
 
 # Run the base simulation.
 # Get the parameters.
@@ -128,24 +124,24 @@ maximum_heating_power = params["MaximumHeatingPower"]
 num_actions = params["NumActions"]
 cost_per_joule = params["CostPerJoule"]
 dt = params["Dt"]
-[baseHouseTempResult, baseTargetTempResult, baseOutdoorTempResult, baseCostResult, baseHeatGainResult, baseHeaterStates] = simulation.Simulate(outdoorTemps, targetTemps, air_mass, air_heat_capacity, thermal_resistance, maximum_heating_power, targetTemp, cost_per_joule, houseTemp, tempHysteresis)
+[baseindoortemperatures, basetargettemperatures, baseoutdoortemperatures, basecosts, baseheatgains, baseheaterstates] = simulation.simulate(outdoor_temperatures, target_temperatures, air_mass, air_heat_capacity, thermal_resistance, maximum_heating_power, targettemperature, cost_per_joule, indoortemperature, hysteresis, dt)
 
 # Plot the results.
 import matplotlib.pyplot as plt
 plt.figure()
-plt.plot(houseTemps)
-plt.plot(baseHouseTempResult)
-plt.plot(targetTempsDayCycle)
-plt.plot(outdoorTemps)
-plt.plot(heaterStates)
-plt.plot(baseHeaterStates)
-plt.plot(np.ones(len(targetTempsDayCycle)) * (targetTempsDayCycle + tempHysteresis), 'k--')
-plt.plot(np.ones(len(targetTempsDayCycle)) * (targetTempsDayCycle - tempHysteresis), 'k--')
+plt.plot(indoor_temperatures)
+plt.plot(baseindoortemperatures)
+plt.plot(target_temperatures)
+plt.plot(outdoor_temperatures)
+plt.plot(heater_states)
+plt.plot(baseheaterstates)
+plt.plot(np.ones(len(target_temperatures)) * (target_temperatures + hysteresis), 'k--')
+plt.plot(np.ones(len(target_temperatures)) * (target_temperatures - hysteresis), 'k--')
 plt.legend(['DQN Indoor Temperature', 'Base Indoor Temperature', 'Target Temperature', 'Outside Temperature', 'DQN Heater States', 'Base Heater States', 'Upper Temperature Bounds', 'Lower Temperature Bounds'])
 plt.grid()
 
 plt.figure()
-plt.plot(baseCostResult)
-plt.plot(costResult)
+plt.plot(basecosts)
+plt.plot(costs)
 plt.legend(['Base Cost', 'DQN Cost'])
 plt.show()

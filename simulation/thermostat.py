@@ -1,8 +1,8 @@
 
-def Update(targetTemp, currentTemp, hysteresis, currentState):
-    if currentTemp > targetTemp + hysteresis:
+def update(targettemperature, indoortemperature, hysteresis, thermostatstate):
+    if indoortemperature > targettemperature + hysteresis:
         return 0
-    elif currentTemp < targetTemp - hysteresis:
+    elif indoortemperature < targettemperature - hysteresis:
         return 1
     else:
-        return currentState
+        return thermostatstate

@@ -45,8 +45,6 @@ class DQN(nn.Module):
             if isinstance(m, nn.Linear):
                 # Xavier Initialization
                 nn.init.xavier_uniform_(m.weight)
-                # If using Kaiming Initialization (for ReLU):
-                # nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
                 
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0.0)

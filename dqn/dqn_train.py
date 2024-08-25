@@ -22,14 +22,14 @@ from tf_agents.trajectories import time_step as ts
 from IPython import display
 
 # Helper function for Segmenting the data temps, in hours, into 6-minute invervals.
-def SegmentHourTempsInto6MinuteTemps(temps):
+def segment_hour_temps_into_6minutes_temps(temps):
     # Segment the data temps, in hours, into 6-minute inverval.
-    tempsMinutes = np.zeros(len(temps) * 10)
+    tempsminutes = np.zeros(len(temps) * 10)
     for i in range(0, len(temps) - 1):
         for j in range(0, 10):
             # Lerp the temperature
-            tempsMinutes[i * 10 + j] = temps[i] + (temps[i + 1] - temps[i]) * j / 10
-    return tempsMinutes
+            tempsminutes[i * 10 + j] = temps[i] + (temps[i + 1] - temps[i]) * j / 10
+    return tempsminutes
 
 # Helper function to plot the durations of the episodes.
 def plot_durations(episode_durations, is_ipython, show_result=False):
@@ -189,7 +189,7 @@ def Train(name, params, outdoor_temperatures, num_episodes, batch_size, device, 
     return episode_durations
 
 # Load the data.
-outdoor_temperatures = SegmentHourTempsInto6MinuteTemps(importer.ImportHuskvarna())
+outdoor_temperatures = segment_hour_temps_into_6minutes_temps(importer.ImportHuskvarna())
 
 # Set the parameters.
 r_wall = 5

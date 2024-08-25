@@ -35,61 +35,54 @@ import numpy as np
 #    return [houseTemp, heatGain, costGain]
 #
 
-# Returns the new house temperature, heat gain and cost gain.
-def Step(outsideTemp, houseTemp, airMass, airHeatCapacity, thermalResistance, heaterPower, heaterState, costPerJoule, integrateSeconds):
+# Returns the new indoor temperature, heat gain and cost gain.
+def step(outdoortemperature, indoortemperature, airmass, airheatcapacity, thermalresistance, heatingpower, heaterstate, costperjoule, integrateseconds):
     # Calculate heat gain and cost
-    heatGain = heaterPower * heaterState * integrateSeconds
-    costGain = heatGain * costPerJoule
+    heatgain = heatingpower * heaterstate * integrateseconds
+    costgain = heatgain * costperjoule
     
     # Calculate the thermal time constant (tau)
-    tau = thermalResistance * airMass * airHeatCapacity
+    tau = thermalresistance * airmass * airheatcapacity
     
     # Exponential decay factor
-    exp_factor = np.exp(-integrateSeconds / tau)
+    exp_factor = np.exp(-integrateseconds / tau)
     
     # Calculate new house temperature
-    houseTemp = (outsideTemp + (houseTemp - outsideTemp) * exp_factor 
-                 + heaterPower * heaterState * thermalResistance * (1 - exp_factor))
+    indoortemperature = (outdoortemperature + (indoortemperature - outdoortemperature) * exp_factor 
+                 + heatingpower * heaterstate * thermalresistance * (1 - exp_factor))
     
-    return [houseTemp, heatGain, costGain]
+    return [indoortemperature, heatgain, costgain]
 
 
-def Simulate(outsideTemps, targetTemps, airMass, airHeatCapacity, thermalResistance, heaterPower, targetTemp, costPerJoule, initialHouseTemp, hysteresis):
+def simulate(outdoortemperatures, targettemperatures, airmass, airheatcapacity, thermalresistance, heatingpower, targettemperature, costperjoule, initialindoortemperature, hysteresis, dt):
     
-    numSamples = len(outsideTemps)
-    roomTempResult = np.zeros(numSamples)
-    outTempResult = np.zeros(numSamples)
-    targetTempResult = np.ones(numSamples)
-    costResult = np.zeros(numSamples)
-    heatGainResult = np.zeros(numSamples)
-    states = np.zeros(numSamples)
+    numsamples = len(outdoortemperatures)
+    indoortemperatures = np.zeros(numsamples)
+    costs = np.zeros(numsamples)
+    heatgains = np.zeros(numsamples)
+    heaterstates = np.zeros(numsamples)
     
-    houseTemp = initialHouseTemp
-    totalCost = 0
-    thermostatState = 0
+    indoortemperature = initialindoortemperature
+    totalcost = 0
+    thermostatstate = 0
     
-    totalHeatGain = 0
+    totalheatgain = 0
     
-    for i in range(0, len(outsideTemps)):
-        outsideTemp = outsideTemps[i]
+    for i in range(0, len(outdoortemperatures)):
+        outdoortemperature = outdoortemperatures[i]
         
-        targetTemp = targetTemps[i]
-        targetTempResult[i] = targetTemp
+        targettemperature = targettemperatures[i]
 
-        # Samples are taken every 6 minute.
-        for j in range(0, 1):
-            index = i
-            roomTempResult[index] = houseTemp
-            outTempResult[index] = outsideTemp
-            costResult[index] = totalCost
-            heatGainResult[index] = totalHeatGain
-            states[index] = thermostatState
+        indoortemperatures[i] = indoortemperature
+        costs[i] = totalcost
+        heatgains[i] = totalheatgain
+        heaterstates[i] = thermostatstate
+    
+        thermostatstate = thermostat.update(targettemperature, indoortemperature, hysteresis, thermostatstate)
+        StepResult = step(outdoortemperature, indoortemperature, airmass, airheatcapacity, thermalresistance, heatingpower, thermostatstate, costperjoule, dt)
         
-            thermostatState = thermostat.Update(targetTemp, houseTemp, hysteresis, thermostatState)
-            StepResult = Step(outsideTemp, houseTemp, airMass, airHeatCapacity, thermalResistance, heaterPower, thermostatState, costPerJoule, 360)
-            
-            houseTemp = StepResult[0]
-            totalHeatGain += StepResult[1]
-            totalCost += StepResult[2]
+        indoortemperature = StepResult[0]
+        totalheatgain += StepResult[1]
+        totalcost += StepResult[2]
  
-    return [roomTempResult, targetTempResult, outTempResult, costResult, heatGainResult, states]
+    return [indoortemperatures, targettemperatures, outdoortemperatures, costs, heatgains, heaterstates]
