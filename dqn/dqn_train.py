@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 
-import environmentV2 as environmentV2, dqn
+import dqn.dqn_environment as dqn_environment, dqn
 import sys
 sys.path.append('simulation')
 import importer
@@ -202,11 +202,11 @@ window_width = 1
 window_height = 1
 num_windows = 6
 heater_max_power = 1200 * 5 # 5 heaters
-total_window_area = environmentV2.calculate_total_window_area(window_width, window_height, num_windows)
-total_wall_area = environmentV2.calculate_total_wall_area(house_width, house_height, house_length, roof_pitch, total_window_area)
+total_window_area = dqn_environment.calculate_total_window_area(window_width, window_height, num_windows)
+total_wall_area = dqn_environment.calculate_total_wall_area(house_width, house_height, house_length, roof_pitch, total_window_area)
 params = {
-    "ThermalResistance": environmentV2.calculate_thermal_resistance(r_wall, r_window, total_wall_area, total_window_area),
-    "AirMass": environmentV2.calculate_total_air_mass(house_width, house_height, house_length, roof_pitch, 1.225),
+    "ThermalResistance": dqn_environment.calculate_thermal_resistance(r_wall, r_window, total_wall_area, total_window_area),
+    "AirMass": dqn_environment.calculate_total_air_mass(house_width, house_height, house_length, roof_pitch, 1.225),
     "AirHeatCapacity": 1005.4,
     "MaximumHeatingPower": heater_max_power,
     "NumActions": 5,
@@ -226,7 +226,7 @@ params = {
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 # Setup the environment.
-env = environmentV2.HouseEnvironmentV2(params, outdoor_temperatures, device)
+env = dqn_environment.DQNEnvironment(params, outdoor_temperatures, device)
 state = env.reset()
 
 num_actions = params["NumActions"]

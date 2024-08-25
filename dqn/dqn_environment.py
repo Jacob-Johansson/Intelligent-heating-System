@@ -46,56 +46,6 @@ def calculate_thermal_resistance(r_wall, r_window, total_wall_area, total_window
 def calculate_total_air_mass(house_width, house_height, house_length, roof_pitch, air_density):
     return (house_length * house_width * house_height + np.tan(roof_pitch) * house_width * house_length) * air_density
 
-class House(object):
-    
-    Length = 0
-    
-    Width = 0
-    
-    Height = 0
-    
-    RoofPitch = 0
-    
-    NumWindows = 0
-    
-    WindowHeight = 0
-    
-    WindowWidth = 0
-    
-    # R-Value for the walls, measured in R_SI units (m^2-K/W)
-    RWall = 0
-    
-    # R-Value for the windows, measured in R_SI units (m^2-K/W)
-    RWindow = 0
-    
-    def GetTotalWindowArea(self):
-        return self.NumWindows*self.WindowHeight*self.WindowWidth
-    
-    def GetTotalWallArea(self):
-        totalWindowArea = self.GetTotalWindowArea()
-        return 2*self.Length*self.Height + 2*self.Width*self.Height + 2*(1/np.cos(self.RoofPitch/2))*self.Width*self.Length + np.tan(self.RoofPitch)*self.Width - totalWindowArea
-    
-    def GetThermalResistance(self):
-        
-        TRWall = self.RWall / self.GetTotalWallArea() # K/W
-        TRWindow = self.RWindow / self.GetTotalWindowArea() # K/W
-        
-        # Returns the equivalent thermal resistance of the whole house
-        return TRWall * TRWindow / (TRWall + TRWindow)
-    
-    # Returns the total air mass in the house, where airDensity is the density of air in kg/m^3
-    def GetTotalAirMass(self, airDensity):
-        return (self.Length * self.Width * self.Height + np.tan(self.RoofPitch) * self.Width * self.Length) * airDensity
-    
-class Heater(object):
-    
-    MaximumPower = 0
-    
-    NumHeaters = 0
-    
-    def GetTotalMaximumPower(self):
-        return self.MaximumPower * self.NumHeaters
-
 # Dictionary storing the parameters:
 # - ThermalResistance: The thermal resistance of the house
 # - AirMass: The total air mass in the house
@@ -107,7 +57,7 @@ class Heater(object):
 # - Hysteresis: The hysteresis of the temperature
 # - Dt: The time to integrate over at each step
 
-class HouseEnvironmentV2(py_environment.PyEnvironment):
+class DQNEnvironment(py_environment.PyEnvironment):
     
     def action_spec(self):
         return self._action_spec

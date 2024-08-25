@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 import dqn
-import environmentV2
+import dqn_environment
 import simulation
 import numpy as np
 import importer
@@ -31,12 +31,12 @@ window_width = 1
 window_height = 1
 num_windows = 6
 heater_max_power = 1200 * 5 # 5 heaters
-total_window_area = environmentV2.calculate_total_window_area(window_width, window_height, num_windows)
-total_wall_area = environmentV2.calculate_total_wall_area(house_width, house_height, house_length, roof_pitch, total_window_area)
+total_window_area = dqn_environment.calculate_total_window_area(window_width, window_height, num_windows)
+total_wall_area = dqn_environment.calculate_total_wall_area(house_width, house_height, house_length, roof_pitch, total_window_area)
 
 params = {
-    "ThermalResistance": environmentV2.calculate_thermal_resistance(r_wall, r_window, total_wall_area, total_window_area),
-    "AirMass": environmentV2.calculate_total_air_mass(house_width, house_height, house_length, roof_pitch, 1.225),
+    "ThermalResistance": dqn_environment.calculate_thermal_resistance(r_wall, r_window, total_wall_area, total_window_area),
+    "AirMass": dqn_environment.calculate_total_air_mass(house_width, house_height, house_length, roof_pitch, 1.225),
     "AirHeatCapacity": 1005.4,
     "MaximumHeatingPower": heater_max_power,
     "NumActions": 5,
@@ -56,7 +56,7 @@ params = {
 outdoorTemps = SegmentHourTempsInto6MinuteTemps(importer.ImportHuskvarna2022())
 targetTemps = np.ones(len(outdoorTemps))*21
 
-env = environmentV2.HouseEnvironmentV2(params, outdoorTemps, "cpu")
+env = dqn_environment.DQNEnvironment(params, outdoorTemps, "cpu")
 
 targetTempsDayCycle = np.zeros(len(targetTemps))
 for i in range(len(targetTemps)):
