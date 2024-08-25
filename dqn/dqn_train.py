@@ -189,7 +189,7 @@ def Train(name, params, outdoor_temperatures, num_episodes, batch_size, device, 
     return episode_durations
 
 # Load the data.
-outdoor_temperatures = importer.ImportHuskvarna()
+outdoor_temperatures = SegmentHourTempsInto6MinuteTemps(importer.ImportHuskvarna())
 
 # Set the parameters.
 r_wall = 5
@@ -217,7 +217,7 @@ params = {
     "Gamma": 0.9,
     "EpsilonStart": 0.9,
     "EpsilonEnd": 0.05,
-    "EpsilonDecay": 100,
+    "EpsilonDecay": 200,
     "Tau": 0.005,
     "LearningRate": 1e-4
 }
@@ -238,7 +238,7 @@ target_net = dqn.DQN(num_observations, num_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 optimizer = optim.AdamW(policy_net.parameters(), lr=params['LearningRate'], amsgrad=True)
 
-durations = Train("dqn_model_a.pth", params, outdoor_temperatures, 500, 128, device, env, policy_net, target_net, optimizer)
+durations = Train("dqn_model_b.pth", params, outdoor_temperatures, 300, 128, device, env, policy_net, target_net, optimizer)
 is_ipython = 'inline' in plt.get_backend()
 plot_durations(durations, is_ipython, True)
 

@@ -76,9 +76,9 @@ tempHysteresis = params["Hysteresis"]
 
 # Load model and weights.
 num_actions = params["NumActions"]
-num_observations = 2
+num_observations = 3
 model = dqn.DQN(num_observations, num_actions)
-model.load_state_dict(torch.load('dqn/models/dqn_model_a.pth'))
+model.load_state_dict(torch.load('dqn/models/dqn_model_b.pth'))
 model.eval()
 
 totalCost = 0
@@ -102,8 +102,9 @@ for i in range(0, len(outdoorTemps)):
         
         tempDifferenceA = targetTemp - houseTemp
         tempDifferenceB = houseTemp - prevHouseTemp
+        nextOutsideTempHour = outdoorTemps[i + 1] if i + 1 < len(outdoorTemps) else outdoorTemps[len(outdoorTemps) - 1]
         
-        result = model.forward(torch.tensor([tempDifferenceA, tempDifferenceB], dtype=torch.float32))
+        result = model.forward(torch.tensor([tempDifferenceA, tempDifferenceB, nextOutsideTempHour - outsideTemp], dtype=torch.float32))
         action = torch.argmax(result).item()
         heaterState = action / (num_actions - 1)
         

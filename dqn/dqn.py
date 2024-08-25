@@ -36,6 +36,20 @@ class DQN(nn.Module):
         self.layer1 = nn.Linear(n_observations, 128)
         self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
+
+        # Initialize weights
+        self._initialize_weights()
+        
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                # Xavier Initialization
+                nn.init.xavier_uniform_(m.weight)
+                # If using Kaiming Initialization (for ReLU):
+                # nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+                
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.0)
         
     def forward(self, x):
         x = F.relu(self.layer1(x))

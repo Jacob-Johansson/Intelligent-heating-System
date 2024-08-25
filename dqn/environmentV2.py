@@ -120,7 +120,7 @@ class HouseEnvironmentV2(py_environment.PyEnvironment):
         
         # Define the action and observation space
         self._action_spec = array_spec.BoundedArraySpec(shape=(), dtype=np.int32, minimum=0, maximum=params["NumActions"]-1, name="action")
-        self._observation_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, name="observation")
+        self._observation_spec = array_spec.BoundedArraySpec(shape=(3,), dtype=np.float32, name="observation")
         
         # Set the parameters
         self._params = params
@@ -136,11 +136,12 @@ class HouseEnvironmentV2(py_environment.PyEnvironment):
         self._state = 0
         self._episode_ended = False
         
+        hysteresis = self._params["Hysteresis"]
         self._indoorTemperatures = np.zeros(len(self._outdoorTemperatures))
-        self._indoorTemperatures[0] = 20 # Todo: change this to a random value
-        self._targetTemperature = 21 # Todo: change this to a random value
+        self._targetTemperature = 21 + np.random.randint(-hysteresis, hysteresis)
+        self._indoorTemperatures[0] = self._targetTemperature - 0.5*hysteresis + np.random.random()*hysteresis
         
-        return ts.restart(np.array([self._targetTemperature-self._indoorTemperatures[0], 0], dtype=np.float32))
+        return ts.restart(np.array([self._targetTemperature-self._indoorTemperatures[0], 0, self._outdoorTemperatures[10] - self._outdoorTemperatures[0]], dtype=np.float32))
 
     def _step(self, action):
         if self._episode_ended:
@@ -171,7 +172,7 @@ class HouseEnvironmentV2(py_environment.PyEnvironment):
         reward = 1/(1+abs(self._targetTemperature-newIndoorTemp))
         
         # Calculate next observations
-        nextObservations = np.array([self._targetTemperature-newIndoorTemp, newIndoorTemp-indoorTemp], dtype=np.float32)
+        nextObservations = np.array([self._targetTemperature-newIndoorTemp, newIndoorTemp-indoorTemp, self._outdoorTemperatures[self._state + 1] - outdoorTemp], dtype=np.float32)
         
         # Terminate the episode if the indoor temperature is outside the bounds.
         if abs(self._targetTemperature - newIndoorTemp) > hysteresis:
