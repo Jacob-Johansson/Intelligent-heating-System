@@ -1,28 +1,8 @@
-from collections import defaultdict
-from typing import Optional
-
 import numpy as np
-import tensorflow as tf
-import torch
-from tensordict import TensorDict, TensorDictBase
-from tensordict.nn import TensorDictModule
-
-from torchrl.data import BoundedTensorSpec, CompositeSpec, UnboundedContinuousTensorSpec
-from torchrl.envs import (
-    CatTensors,
-    EnvBase,
-    Transform,
-    TransformedEnv,
-    UnsqueezeTransform,
-)
-from torchrl.envs.transforms.transforms import _apply_to_composite
-from torchrl.envs.utils import check_env_specs, step_mdp
 
 from tf_agents.environments import py_environment
 from tf_agents.specs import array_spec
 from tf_agents.trajectories import time_step as ts
-from tf_agents.environments import utils
-
 
 import sys
 sys.path.append('simulation')
