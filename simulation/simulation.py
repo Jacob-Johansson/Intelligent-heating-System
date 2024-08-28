@@ -54,7 +54,7 @@ def step(outdoortemperature, indoortemperature, airmass, airheatcapacity, therma
     return [indoortemperature, heatgain, costgain]
 
 
-def simulate(outdoortemperatures, targettemperatures, airmass, airheatcapacity, thermalresistance, heatingpower, targettemperature, costperjoule, initialindoortemperature, hysteresis, dt):
+def simulate(outdoortemperatures, targettemperatures, airmass, airheatcapacity, thermalresistance, heatingpower, costperjoule, initialindoortemperature, hysteresis, dt):
     
     numsamples = len(outdoortemperatures)
     indoortemperatures = np.zeros(numsamples)

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 
-import dqn.dqn_environment as dqn_environment, dqn
+import dqn_environment, dqn
 import sys
 sys.path.append('simulation')
 import importer
@@ -189,7 +189,26 @@ def Train(name, params, outdoor_temperatures, num_episodes, batch_size, device, 
     return episode_durations
 
 # Load the data.
-outdoor_temperatures = segment_hour_temps_into_6minutes_temps(importer.ImportHuskvarna())
+outdoor_temperatures = segment_hour_temps_into_6minutes_temps(importer.import_huskvarna())
+target_temperatures = np.zeros(len(outdoor_temperatures))
+night_temperature = 18
+day_temperature = 21
+
+# Populate the target temperatures
+for i in range(len(target_temperatures)):
+    time = i % (24*10)
+    # Night time: 10 PM to 6 AM
+    # Lerp from day to night temperature
+    if time > 21 * 10 and time < 22 * 10:
+        target_temperatures[i] = day_temperature + (night_temperature - day_temperature) * (time - 21 * 10) / 10
+    elif time >= 22 * 10 or time < 5 * 10:
+        target_temperatures[i] = night_temperature
+    # Lerp from night to day temperature
+    elif time >= 5 * 10 and time < 6 * 10:
+        target_temperatures[i] = night_temperature + (day_temperature - night_temperature) * (time - 5 * 10) / 10
+    else:
+        target_temperatures[i] = day_temperature
+    
 
 # Set the parameters.
 r_wall = 5
@@ -209,7 +228,7 @@ params = {
     "AirMass": dqn_environment.calculate_total_air_mass(house_width, house_height, house_length, roof_pitch, 1.225),
     "AirHeatCapacity": 1005.4,
     "MaximumHeatingPower": heater_max_power,
-    "NumActions": 5,
+    "NumActions": 10,
     "CostPerJoule": 1.1015/3.6e6,
     "Discount": 0.9,
     "Hysteresis": 2,
@@ -217,16 +236,16 @@ params = {
     "Gamma": 0.9,
     "EpsilonStart": 0.9,
     "EpsilonEnd": 0.05,
-    "EpsilonDecay": 200,
+    "EpsilonDecay": 100,
     "Tau": 0.005,
-    "LearningRate": 1e-4
+    "LearningRate": 1e-3
 }
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 # Setup the environment.
-env = dqn_environment.DQNEnvironment(params, outdoor_temperatures, device)
+env = dqn_environment.DQNEnvironment(params, outdoor_temperatures, target_temperatures, device)
 state = env.reset()
 
 num_actions = params["NumActions"]
@@ -238,7 +257,7 @@ target_net = dqn.DQN(num_observations, num_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 optimizer = optim.AdamW(policy_net.parameters(), lr=params['LearningRate'], amsgrad=True)
 
-durations = Train("dqn_model_b.pth", params, outdoor_temperatures, 300, 128, device, env, policy_net, target_net, optimizer)
+durations = Train("dqn_model_linear10actions.pth", params, outdoor_temperatures, 500, 128, device, env, policy_net, target_net, optimizer)
 is_ipython = 'inline' in plt.get_backend()
 plot_durations(durations, is_ipython, True)
 

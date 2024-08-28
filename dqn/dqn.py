@@ -51,8 +51,20 @@ class DQN(nn.Module):
         
     def forward(self, x):
         x = F.relu(self.layer1(x))
+        
+        # Add batch and sequence dimensions if necessary
+        #if x.dim() == 1:  # If input is 1D, add batch and sequence dimensions
+        #    x = x.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, input_size]
+        #elif x.dim() == 2:  # If input is 2D, add sequence dimension
+        #    x = x.unsqueeze(1)  # Shape: [batch_size, 1, input_size]
+            
         x = F.relu(self.layer2(x))
         return self.layer3(x)
+
+    def init_hidden(self, batch_size=1):
+        # Initialize the hidden state (h0, c0) for LSTM
+        return (torch.zeros(1, batch_size, 128),
+                torch.zeros(1, batch_size, 128))
     
 # Epsilon-greedy policy
 class EpsilonGreedyPolicy():

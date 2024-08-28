@@ -45,7 +45,7 @@ class DQNEnvironment(py_environment.PyEnvironment):
     def observation_spec(self):
         return self._observation_spec
     
-    def __init__(self, params, outdoor_temperatures, device="cpu"):
+    def __init__(self, params, outdoor_temperatures, target_temperatures, device="cpu"):
         super().__init__()
         
         # Define the action and observation space
@@ -57,21 +57,24 @@ class DQNEnvironment(py_environment.PyEnvironment):
         
         # Define the temperatures
         self._outdoor_temperatures = outdoor_temperatures
+        self._target_temperatures = target_temperatures
         self._indoor_temperatures = np.zeros(len(outdoor_temperatures))
         self._indoor_temperatures[0] = 20
-        self._target_temperature = 21
         self._state = 0
+        self._previousheaterstate = 0
     
     def _reset(self):
         self._state = 0
         self._episode_ended = False
+        self._previousheaterstate = 0
         
         hysteresis = self._params["Hysteresis"]
+        targettemperaturefluxuation = np.random.randint(-hysteresis, hysteresis) # Randomly fluctuate the target temperature
         self._indoor_temperatures = np.zeros(len(self._outdoor_temperatures))
-        self._target_temperature = 21 + np.random.randint(-hysteresis, hysteresis)
-        self._indoor_temperatures[0] = self._target_temperature - 0.5*hysteresis + np.random.random()*hysteresis
+        #self._target_temperatures = self._target_temperatures + targettemperaturefluxuation
+        self._indoor_temperatures[0] = self._target_temperatures[0] - 0.5*hysteresis + np.random.random()*hysteresis
         
-        return ts.restart(np.array([self._target_temperature-self._indoor_temperatures[0], 0, self._outdoor_temperatures[10] - self._outdoor_temperatures[0]], dtype=np.float32))
+        return ts.restart(np.array([self._target_temperatures[0]-self._indoor_temperatures[0], 0, 0], dtype=np.float32))
 
     def _step(self, action):
         if self._episode_ended:
@@ -92,22 +95,30 @@ class DQNEnvironment(py_environment.PyEnvironment):
         indoortemperature = self._indoor_temperatures[self._state]
         outdoortemperature = self._outdoor_temperatures[self._state]
         heaterstate = action / (numactions-1)
+        targettemperature = self._target_temperatures[self._state]
         
-        [new_indoortemperature, new_heatgain, new_costgain] = simulation.Step(outdoortemperature, indoortemperature, airmass, airheatcapacity, thermalresistance, maximumheatingpower, heaterstate, costperjoule, dt)
+        [new_indoortemperature, new_heatgain, new_costgain] = simulation.step(outdoortemperature, indoortemperature, airmass, airheatcapacity, thermalresistance, maximumheatingpower, heaterstate, costperjoule, dt)
         self._state += 1
         
         self._indoor_temperatures[self._state] = new_indoortemperature
         
         # Calculate the reward
-        reward = 1/(1+abs(self._target_temperature-new_indoortemperature))
+        r1 = self._target_temperatures[self._state] - new_indoortemperature
+        r2 = -1 if heaterstate != self._previousheaterstate else 0 #new_indoortemperature - indoortemperature
+        r = 0.5*np.sqrt(r1**2 + r2**2)
+        reward = 1/(1+abs(r1)) + r2
         
         # Calculate next observations
-        next_observations = np.array([self._target_temperature-new_indoortemperature, new_indoortemperature-indoortemperature, self._outdoor_temperatures[self._state + 1] - outdoortemperature], dtype=np.float32)
+        obs0 = self._target_temperatures[self._state] - new_indoortemperature
+        obs1 =  new_indoortemperature-indoortemperature
+        obs2 = self._outdoor_temperatures[self._state] - outdoortemperature
+        next_observations = np.array([obs0, obs1, obs2], dtype=np.float32)
+        self._previousheaterstate = heaterstate
         
         # Terminate the episode if the indoor temperature is outside the bounds.
-        if abs(self._target_temperature - new_indoortemperature) > hysteresis:
+        if abs(self._target_temperatures[self._state] - new_indoortemperature) > hysteresis:
             self._episode_ended = True
-            return ts.termination(next_observations, reward=-1)
+            return ts.termination(next_observations, reward=-100)
         
         # Terminate the episode if the current outdoor state is the last state.
         elif self._state >= len(self._outdoor_temperatures) - 2:
